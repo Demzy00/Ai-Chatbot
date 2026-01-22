@@ -1,0 +1,114 @@
+import { API_KEY } from "./config.js";
+
+const chatBox = document.getElementById("chat-box");
+const userInput = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
+
+function simpleCountdown(secondsInitial) {
+  let remainingTime = secondsInitial;
+  // The setInterval function calls a function or evaluates an expression at specified intervals (in milliseconds)
+  const countdownInterval = setInterval(function () {
+    if (remainingTime <= 0) {
+      // Stop the timer when it reaches zero or below
+      clearInterval(countdownInterval);
+      console.log("Countdown finished!");
+    } else {
+      console.log(`${remainingTime} seconds remaining`);
+    }
+    remainingTime -= 1; // Decrement the time by 1 second
+  }, 1000); // 1000 milliseconds = 1 second
+}
+
+// console.log(simpleCountdown(10));
+
+window.onload = () => {
+  const savedChat = localStorage.getItem("chatHistory");
+  console.log(savedChat);
+  if (savedChat) {
+    chatBox.innerHTML = savedChat;
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+  if (simpleCountdown(5) === "Countdown finished!") {
+    // localStorage.removeItem("chatHistory");
+    // chatBox.innerHTML = "";
+    
+  }
+  console.log(savedChat);
+};
+
+function addMessage(message, className) {
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("message", className);
+  msgDiv.textContent = message;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function showTyping() {
+  const typingDiv = document.createElement("div");
+  typingDiv.classList.add("message", "bot-message");
+  typingDiv.textContent = "Ai is typing...";
+  chatBox.appendChild(typingDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return typingDiv;
+}
+
+async function getBotReply(userMessage) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: userMessage }] }],
+      }),
+    });
+    console.log(response);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.log("API Error", data);
+      return data?.error?.message || "Error fetching AI response";
+    }
+
+    return data.candidates?.[0]?.content?.parts?.[0]?.text;
+  } catch (error) {}
+}
+
+sendBtn.onclick = async () => {
+  const message = userInput.value.trim();
+  if (message === "") return;
+  addMessage(message, "user-message");
+  userInput.value = "";
+
+  const typingDiv = showTyping();
+
+  const botReply = await getBotReply(message);
+  typingDiv.remove();
+
+  addMessage(botReply, "bot-message");
+
+  localStorage.setItem("chatHistory", chatBox.innerHTML);
+};
+
+userInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    sendBtn.click();
+  }
+});
+
+// sendBtn.addEventListener("click", () => {
+//   const message = userInput.value.trim();
+//   console.log(message);
+//   if(message, "user message") {
+//     const userMessage = document.createElement("div");
+//     userMessage.classList.add("message", "user-message");
+//     userMessage.textContent = message;
+//     chatBox.appendChild(userMessage);
+//     userInput.value = "";
+//   }
+// });
